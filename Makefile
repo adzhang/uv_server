@@ -10,6 +10,8 @@ DEBUG_OUTPUT = ./bin_debug/$(TARGET)
 .SUFFIXES: .o .cpp .c
 .PRECIOUS: $(OBJS)
 
+all: clean $(DEBUG_OUTPUT) $(TARGET)
+
 C = /usr/bin/gcc
 CC = /usr/bin/g++
 STRIP=/usr/bin/strip
@@ -25,7 +27,7 @@ LDFLAGS=\
 		-L/usr/lib \
 		-L/usr/lib64 \
 		-Llib/linux \
-		-lnet -luv -lpthread -lrt
+		-luv -lpthread -lrt
 
 $(DEBUG_OUTPUT): $(OBJS) bin_debug
 
@@ -41,9 +43,6 @@ bin_debug:
 $(TARGET):	$(OBJS)
 	@echo "Linking debug lib $@"
 	@$(CC) $(OBJS) $(LDFLAGS) $(CFLAGS) -o ./bin_debug/$@
-	
-
-all: $(DEBUG_OUTPUT) $(TARGET)
 	
 $(OBJDIR):
 	@mkdir $(OBJDIR)
