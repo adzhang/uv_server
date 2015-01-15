@@ -1,2 +1,2 @@
 # uv_server
-a tiny c++ wrapper base on libuv
+尝试用简单的C++封装libuv库，学习性质。
