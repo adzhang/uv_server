@@ -1,7 +1,8 @@
-TARGET=uv_server
+TARGET=libnet.a
 
-SOURCES += $(wildcard src/*.cpp)
+SOURCES += $(wildcard ./*.cpp)
 
+LIBDIR = ../../lib/linux
 OBJDIR = ./obj
 OBJS = $(addprefix $(OBJDIR)/, $(subst .c,.o,$(SOURCES:.cpp=.o)))
 OUTPUT = ./bin/$(TARGET)
@@ -10,15 +11,13 @@ DEBUG_OUTPUT = ./bin_debug/$(TARGET)
 .SUFFIXES: .o .cpp .c
 .PRECIOUS: $(OBJS)
 
-all: clean $(DEBUG_OUTPUT) $(TARGET)
-
 C = /usr/bin/gcc
 CC = /usr/bin/g++
 STRIP=/usr/bin/strip
 AR=/usr/bin/ar
 
 CFLAGS += -I/usr/include \
-		  -Iinclude
+		  -I../../include
 
 CFLAGS	+= -g -Wall -O0 -D_DEBUG -D__linux__
 #CFLAGS	+= -g -O0 -fno-rtti -D_DEBUG -lrt -ldl -lgcc_s
@@ -26,24 +25,15 @@ CFLAGS	+= -g -Wall -O0 -D_DEBUG -D__linux__
 LDFLAGS=\
 		-L/usr/lib \
 		-L/usr/lib64 \
-		-Llib/linux \
-		-lnet -luv -lpthread -lrt
+		-L../../lib/linux \
+		-luv -lpthread -lrt
 
 $(DEBUG_OUTPUT): $(OBJS) bin_debug
 
+$(LIBDIR) /$(TARGET):$(OBJS)
 
-bin:
-	@rm -rf ./bin
-	@mkdir ./bin
+all: $(LIBDIR)/$(TARGET)
 
-bin_debug:
-	@rm -rf ./bin_debug
-	@mkdir ./bin_debug
-
-$(TARGET):	$(OBJS)
-	@echo "Linking debug lib $@"
-	@$(CC) $(OBJS) $(LDFLAGS) $(CFLAGS) -o ./bin_debug/$@
-	
 $(OBJDIR):
 	@mkdir $(OBJDIR)
 
@@ -93,4 +83,4 @@ $(OBJDIR)/%.o: ./%.c
 
 	
 clean:
-	rm -rf  $(OBJDIR) $(OBJS) $(OUTPUT) ./bin ./bin_debug
+	rm -rf  $(OBJDIR) $(OBJS) $(LIBDIR)/$(TARGET)
