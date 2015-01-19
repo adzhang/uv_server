@@ -8,22 +8,22 @@ class Handle {
 public:
     Handle(){}
     virtual ~Handle(){}
-    virtual void OnMessage() = 0;
-    virtual int Sent(char* data, size_t len) = 0;
-    virtual void Close() = 0;
+    virtual void on_message() = 0;
+    virtual int sent(char* data, size_t len) = 0;
+    virtual void close() = 0;
 };
 
 class Net {
 public:
     Net(){}
     virtual ~Net(){}
-    virtual int Init(const char* ip, int port, int max_conn) = 0;
-    virtual int Shutdown() = 0;
-    virtual int Loop(uint32_t timeout_ms) = 0;
+    virtual int init(const char* ip, int port, int max_conn) = 0;
+    virtual int shutdown() = 0;
+    virtual int loop(uint32_t timeout_ms) = 0;
 };
 
-Net* CreateNetImpl();
-int DeleteNet(Net* net);
+Net* create_net_impl();
+int delete_net(Net* net);
 
 #endif // _NET_H_
 
