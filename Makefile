@@ -1,5 +1,7 @@
 TARGET=uv_server
 
+LIB_DIRS += ./src/net
+
 SOURCES += $(wildcard src/*.cpp)
 
 OBJDIR = ./obj
@@ -10,7 +12,7 @@ DEBUG_OUTPUT = ./bin_debug/$(TARGET)
 .SUFFIXES: .o .cpp .c
 .PRECIOUS: $(OBJS)
 
-all: clean $(DEBUG_OUTPUT) $(TARGET)
+all: clean dep_libs $(DEBUG_OUTPUT) $(TARGET)
 
 C = /usr/bin/gcc
 CC = /usr/bin/g++
@@ -28,6 +30,11 @@ LDFLAGS=\
 		-L/usr/lib64 \
 		-Llib/linux \
 		-lnet -luv -lpthread -lrt
+
+dep_libs:
+	for dir in $(LIB_DIRS); do \
+		make all -C $$dir; \
+	done
 
 $(DEBUG_OUTPUT): $(OBJS) bin_debug
 
