@@ -1,5 +1,9 @@
+#ifndef _NETIMPL_H_
+#define _NETIMPL_H_
+
 #include "net/net.h"
 #include "uv/uv.h"
+#include "Buffer.h"
 
 typedef struct {
     uv_write_t req;
@@ -10,10 +14,10 @@ class NetImpl;
 class Session :public Handle {
 public:
     Session();
-    virtual ~Session() {}
+    virtual ~Session();
 
-    virtual void on_message();
-    virtual int sent(char* data, size_t len);
+    virtual void on_message(const char* packet,int size);
+    virtual int sent(const char* data, size_t len);
     virtual void close();
 
     int on_recv(char* data, size_t nread);
@@ -23,6 +27,7 @@ public:
 
     NetImpl* m_pNet;
     uv_stream_t* m_pStream;
+    Buffer  m_recv_buf;
 };
 
 class NetImpl :public Net {
@@ -41,4 +46,4 @@ public:
     uv_loop_t* m_pLoop;
 };
 
-
+#endif  // _NETIMPL_H_

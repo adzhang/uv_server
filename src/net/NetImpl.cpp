@@ -1,4 +1,5 @@
 #include "NetImpl.h"
+#include "MsgPack.h"
 
 #include <stdlib.h>
 #include <assert.h>
@@ -7,13 +8,22 @@
     printf("[%s:%d] " fmt, __FILE__, __LINE__, ##__VA_ARGS__);
 
 static void echo_alloc(uv_handle_t* handle,size_t suggested_size,uv_buf_t* buf) {
-    buf->base = (char*)malloc(suggested_size);
-    buf->len = suggested_size;
+    int writable_sz = 0;
+    uv_stream_t* stream = (uv_stream_t*)handle;
+    Session* session = (Session*)stream->data;
+    Buffer* recv_buf = &session->m_recv_buf;
+
+    buf->base = recv_buf->get_writable_buffer(&writable_sz);
+    buf->len = writable_sz >= suggested_size ? suggested_size : writable_sz;
+    //LOG("echo_alloc writable_sz: %d\n",buf->len);
 }
 
 Session::Session() {
     m_pNet = NULL;
     m_pStream = NULL;
+}
+Session::~Session() {
+
 }
 
 void Session::after_write(uv_write_t* req, int status) {
@@ -21,7 +31,6 @@ void Session::after_write(uv_write_t* req, int status) {
 
     /* Free the read/write buffer and the request */
     write_req_t* wr = (write_req_t*) req;
-    free(wr->buf.base);
 
     if (status == 0) {
         free(wr);
@@ -43,16 +52,18 @@ void Session::on_close(uv_handle_t* peer) {
     printf("session end !!\n");
 }
 
-void Session::on_message() {
-
+void Session::on_message(const char* packet,int size) {
+    //LOG("on_message: %b\n",packet,size);
+    sent(packet,size);
 }
-int Session::sent(char* data, size_t len) {
+
+int Session::sent(const char* data, size_t len) {
     write_req_t* wr = (write_req_t*) malloc(sizeof(write_req_t));
     assert(wr != NULL);
-    wr->buf = uv_buf_init(data, len);
+    wr->buf = uv_buf_init(const_cast<char*>(data), len);
 
     if (uv_write(&wr->req, m_pStream, &wr->buf, 1, after_write)) {
-        LOG("uv_write failed");
+        LOG("uv_write failed\n");
         return 1;
     }
     return 0;
@@ -62,8 +73,44 @@ void Session::close() {
 }
 
 int Session::on_recv(char* data, size_t nread) {
-    LOG("recv message: %s",data);
-    sent(data,nread);
+    //LOG("has wrote: %d\n",nread);
+    m_recv_buf.write((int)nread);    // do write
+
+    int sz=0,ret,merge_ret;
+    int skip = MsgPack::get_netpack_protocol_head();
+
+    char* pack_data = m_recv_buf.get_readable_buffer(&sz);
+    //LOG("on_recv readable_sz: %d\n",sz);
+    if( sz == 0 )
+        return 0;
+
+    ret = sub_msg_pack2(pack_data,sz);
+    if( ret > 0 ) {                 // full packet
+        on_message(pack_data+skip,sz-skip);
+        m_recv_buf.read(sz);
+    } else if( ret < 0 ) {          // error packet
+        close();
+    } else {                        // pending packet or ring back
+        if( sz >= MsgPack::get_header_len() ) {
+            MsgPack* msg_pack = (MsgPack*)pack_data;
+            int new_len = msg_pack->get_body_len();
+            char* new_data = (char*)malloc(new_len);
+
+            merge_ret = m_recv_buf.readable_merge(new_data,new_len);
+            if( merge_ret > 0 ) {
+                ret = sub_msg_pack2(new_data,new_len);
+                if( ret < 0 ) {
+                    close();
+                } else {
+                    on_message(new_data+skip,new_len-skip);
+                    m_recv_buf.read(sz);
+                    m_recv_buf.read(new_len-sz);
+                }
+            }
+            free(new_data);
+        }
+    }
+
     return 0;
 }
 
@@ -71,20 +118,17 @@ void NetImpl::after_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf
     Session* client_handle = (Session*)stream->data;
 
     if (nread < 0) {
-        /* Error or EOF */
-        assert(nread == UV_EOF);
+        if( nread == UV_ENOBUFS ) {   // recv_buf is full, recv overload, try to unpack
+            client_handle->on_recv(NULL, 0);
+        } else if( nread == UV_EOF ) {
+            client_handle->close();
+        } else
+            LOG("after_read unknown error: %d\n", nread);
 
-        if (buf->base) {
-            free(buf->base);
-        }
-
-        client_handle->close();
         return;
     }
 
     if (nread == 0) {
-        /* Everything OK, but nothing read. */
-        free(buf->base);
         return;
     }
 

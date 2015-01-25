@@ -8,8 +8,8 @@ class Handle {
 public:
     Handle(){}
     virtual ~Handle(){}
-    virtual void on_message() = 0;
-    virtual int sent(char* data, size_t len) = 0;
+    virtual void on_message(const char* packet,int size) = 0;
+    virtual int sent(const char* data, size_t len) = 0;
     virtual void close() = 0;
 };
 
