@@ -70,6 +70,9 @@ inline void Buffer::check_end() {
         head_ = data_;
     if( tail_ == buf_end )
         tail_ = data_;
+
+    if( head_ == tail_ )        // no readable data, reset
+        reset();
 }
 
 inline int Buffer::read(int len) {
