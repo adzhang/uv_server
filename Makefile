@@ -3,6 +3,8 @@ TARGET=uv_server
 LIB_DIRS += ./src/net
 
 SOURCES += $(wildcard src/*.cpp)
+SOURCES += $(wildcard src/common/*.c)
+SOURCES += $(wildcard src/common/*.cpp)
 
 OBJDIR = ./obj
 OBJS = $(addprefix $(OBJDIR)/, $(subst .c,.o,$(SOURCES:.cpp=.o)))
@@ -20,6 +22,7 @@ STRIP=/usr/bin/strip
 AR=/usr/bin/ar
 
 CFLAGS += -I/usr/include \
+		  -Isrc/common \
 		  -Iinclude
 
 CFLAGS	+= -g -Wall -O0 -D_DEBUG -D__linux__
